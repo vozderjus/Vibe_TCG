@@ -1,0 +1,37 @@
+[
+  {
+    "input": [64, 34, 25, 12, 22, 11, 90],
+    "expected": [11, 12, 22, 25, 34, 64, 90],
+    "description": "Нормальный случай 1: массив из 7 элементов",
+    "is_edge_case": false,
+    "weight": 1.0
+  },
+  {
+    "input": [5, 1, 4, 2, 8],
+    "expected": [1, 2, 4, 5, 8],
+    "description": "Нормальный случай 2: массив из 5 элементов",
+    "is_edge_case": false,
+    "weight": 1.0
+  },
+  {
+    "input": [],
+    "expected": [],
+    "description": "Пустой массив",
+    "is_edge_case": true,
+    "weight": 1.5
+  },
+  {
+    "input": [42],
+    "expected": [42],
+    "description": "Массив из одного элемента",
+    "is_edge_case": true,
+    "weight": 1.2
+  },
+  {
+    "input": [5, 5, 5, 5, 5],
+    "expected": [5, 5, 5, 5, 5],
+    "description": "Все элементы одинаковые",
+    "is_edge_case": true,
+    "weight": 1.3
+  }
+]

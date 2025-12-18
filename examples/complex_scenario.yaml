@@ -1,0 +1,37 @@
+- input:
+  - 100
+  - -50
+  - 75
+  - 0
+  - -25
+  expected:
+  - -50
+  - -25
+  - 0
+  - 75
+  - 100
+  description: Сортировка массива с отрицательными числами
+  is_edge_case: false
+  weight: 1.0
+- input:
+    array:
+    - 10
+    - 20
+    - 30
+    - 40
+    - 50
+    target: 30
+  expected: 2
+  description: Поиск элемента в середине массива
+  is_edge_case: false
+  weight: 1.0
+- input: 5
+  expected: 120
+  description: Вычислить факториал 5!
+  is_edge_case: false
+  weight: 1.0
+- input: 7
+  expected: 13
+  description: Найти 7-е число Фибоначчи
+  is_edge_case: false
+  weight: 1.0
