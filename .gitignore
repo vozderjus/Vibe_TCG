@@ -26,3 +26,5 @@ data/*.xlsx
 # Generated files
 *.log
 .DS_Store
+
+.check-cicd.py

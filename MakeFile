@@ -49,3 +49,33 @@ run:
 # Для запуска с аргументами
 %:
 	@:
+
+.PHONY: check-cicd
+
+check-cicd:
+	@echo "🔧 Проверка CI/CD..."
+	@# 1. Проверка структуры
+	@test -d src || (echo "❌ Папка src не существует" && exit 1)
+	@test -d tests || (echo "❌ Папка tests не существует" && exit 1)
+	@echo "✓ Структура проекта OK"
+	
+	@# 2. Проверка линтеров
+	@echo "▶ Проверка линтеров..."
+	@flake8 src/ tests/ || exit 1
+	@black --check src/ tests/ || exit 1
+	@echo "✓ Линтеры OK"
+	
+	@# 3. Запуск тестов
+	@echo "▶ Запуск тестов..."
+	@pytest tests/ -v --tb=short || exit 1
+	@echo "✓ Тесты OK"
+	
+	@# 4. Проверка CLI
+	@echo "▶ Проверка CLI..."
+	@rm -f test_cases.json 2>/dev/null || true
+	@python main.py sorting -n 1 --no-edge-cases || exit 1
+	@test -f test_cases.json || (echo "❌ Файл не создан" && exit 1)
+	@rm -f test_cases.json
+	@echo "✓ CLI OK"
+	
+	@echo "✅ Все проверки пройдены!"

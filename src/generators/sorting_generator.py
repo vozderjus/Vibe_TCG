@@ -25,37 +25,40 @@ class SortingGenerator(BaseGenerator):
 
     def generate_normal_cases(self, n: int = 5) -> List[TestCase]:
         cases = []
-
+        
         for i in range(n):
             # Разная сложность для разных случаев
             if i == 0:
-                length = random.randint(self.min_len, min(10, self.max_len))
+                length = random.randint(5, 10)  # Маленький массив
             elif i == 1:
-                length = random.randint(
-                    max(50, self.min_len), min(100, self.max_len)
-                )
+                min_val = max(50, self.min_len)
+                max_val = min(100, self.max_len)
+                if min_val <= max_val:
+                    length = random.randint(min_val, max_val)
+                else:
+                    length = random.randint(self.min_len, self.max_len)
             else:
                 length = random.randint(self.min_len, self.max_len)
-
+            
             # Генерация массива
             arr = [random.randint(-1000, 1000) for _ in range(length)]
-
+            
             # Добавление особенностей
             if length > 5 and random.random() > 0.5:
                 # Добавляем дубликаты
                 duplicates = random.randint(1, 3)
                 for _ in range(duplicates):
                     arr.append(arr[random.randint(0, len(arr) - 1)])
-
+            
             if random.random() > 0.7:
                 # Добавляем отрицательные числа
                 for j in range(len(arr)):
                     if random.random() > 0.5:
                         arr[j] = -arr[j]
-
+            
             cases.append(
                 TestCase(
-                    input=copy.deepcopy(arr),
+                    input=arr.copy(),  # Используем copy вместо deepcopy
                     expected=sorted(arr),
                     description=f"Нормальный случай {i+1}: "
                     f"массив из {length} элементов",
@@ -63,7 +66,7 @@ class SortingGenerator(BaseGenerator):
                     weight=1.0,
                 )
             )
-
+    
         return cases
 
     def generate_edge_cases(self) -> List[TestCase]:
