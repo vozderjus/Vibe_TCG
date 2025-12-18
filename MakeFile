@@ -1,0 +1,51 @@
+.PHONY: help install install-dev test lint format clean generate-examples run
+
+help:
+	@echo "Доступные команды:"
+	@echo "  make install       - Установить основные зависимости"
+	@echo "  make install-dev   - Установить зависимости для разработки"
+	@echo "  make test          - Запустить тесты"
+	@echo "  make lint          - Проверить код линтерами"
+	@echo "  make format        - Отформатировать код"
+	@echo "  make clean         - Очистить временные файлы"
+	@echo "  make generate      - Сгенерировать примеры"
+	@echo "  make run ARGS=\"sorting\" - Запустить генератор"
+
+install:
+	pip install -e .
+
+install-dev:
+	pip install -e ".[dev]"
+	pre-commit install
+
+test:
+	pytest tests/ -v --cov=src --cov-report=term-missing --cov-report=html
+
+lint:
+	flake8 src/ tests/
+	black --check src/ tests/
+	isort --check-only src/ tests/
+	mypy src/
+
+format:
+	black src/ tests/
+	isort src/ tests/
+
+clean:
+	rm -rf __pycache__ */__pycache__ */*/__pycache__ */*/*/__pycache__
+	rm -rf .pytest_cache .coverage htmlcov .mypy_cache
+	rm -rf build/ dist/ *.egg-info/
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "*.pyc" -delete
+
+generate-examples:
+	python -m src.main sorting -n 5 -o examples/sorting_test_cases.json
+	python -m src.main searching -n 5 -o examples/searching_test_cases.json
+	python -m src.main math -n 3 -o examples/math_test_cases.yaml
+
+run:
+	python -m src.main $(ARGS)
+
+# Для запуска с аргументами
+%:
+	@:
