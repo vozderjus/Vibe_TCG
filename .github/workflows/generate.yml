@@ -1,15 +1,12 @@
 name: 🗓️ Scheduled Test Case Generation
 
 on:
-  # 1. Запуск по расписанию (каждое воскресенье в 00:00 UTC)
   schedule:
     - cron: '0 0 * * 0'
-  
-  # 2. Ручной запуск из интерфейса GitHub
   workflow_dispatch:
     inputs:
       task_type:
-        description: 'Тип задачи для генерации'
+        description: 'Тип задачи'
         required: true
         default: 'all'
         type: choice
@@ -19,12 +16,12 @@ on:
           - searching
           - math
       num_cases:
-        description: 'Количество тестовых случаев каждого типа'
+        description: 'Количество случаев'
         required: false
-        default: 15
+        default: 10
         type: number
       format:
-        description: 'Формат выходных файлов'
+        description: 'Формат'
         required: false
         default: 'json'
         type: choice
@@ -33,190 +30,88 @@ on:
           - yaml
 
 jobs:
-  generate-weekly-cases:
+  generate:
     runs-on: ubuntu-latest
     
     steps:
-    # 1. Подготовка репозитория
-    - name: ⬇️ Checkout repository
+    - name: ⬇️ Checkout
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Полная история для создания PR
+        fetch-depth: 0
     
-    # 2. Настройка Python
-    - name: 🐍 Set up Python 3.11
+    - name: 🐍 Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
         cache: 'pip'
     
-    # 3. Установка зависимостей
-    - name: 📦 Install dependencies
+    - name: 📦 Install
       run: |
-        python -m pip install --upgrade pip
         pip install -e .
-        echo "✅ Зависимости установлены"
     
-    # 4. Генерация тестовых случаев
-    - name: 🧪 Generate test cases
-      id: generate
+    - name: 🧪 Generate
+      id: gen
       run: |
-        echo "🔧 Начинаю генерацию тестовых случаев..."
-        
-        # Создаём папку для результатов
-        TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-        OUTPUT_DIR="generated_$TIMESTAMP"
+        TIMESTAMP=$(date +"%Y-%m-%d")
+        OUTPUT_DIR="weekly_cases_$TIMESTAMP"
         mkdir -p $OUTPUT_DIR
         
-        # Определяем какие задачи генерировать
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          TASK_TYPE="${{ github.event.inputs.task_type }}"
-          NUM_CASES="${{ github.event.inputs.num_cases }}"
-          FORMAT="${{ github.event.inputs.format }}"
+        # Определяем параметры
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          TASK="${{ github.event.inputs.task_type }}"
+          COUNT="${{ github.event.inputs.num_cases }}"
+          FMT="${{ github.event.inputs.format }}"
         else
-          # При scheduled запуске генерируем всё
-          TASK_TYPE="all"
-          NUM_CASES=15
-          FORMAT="json"
+          TASK="all"
+          COUNT=10
+          FMT="json"
         fi
         
-        # Генерация в зависимости от типа
-        case $TASK_TYPE in
-          "sorting")
-            python main.py sorting -n $NUM_CASES -o $OUTPUT_DIR/sorting_cases.$FORMAT -f $FORMAT --verbose
-            ;;
-          "searching")
-            python main.py searching -n $NUM_CASES -o $OUTPUT_DIR/searching_cases.$FORMAT -f $FORMAT --verbose
-            ;;
-          "math")
-            python main.py math -n $NUM_CASES -o $OUTPUT_DIR/math_cases.$FORMAT -f $FORMAT --verbose
-            ;;
-          "all")
-            python main.py sorting -n $NUM_CASES -o $OUTPUT_DIR/sorting_cases.$FORMAT -f $FORMAT --no-edge-cases
-            python main.py searching -n $NUM_CASES -o $OUTPUT_DIR/searching_cases.$FORMAT -f $FORMAT --no-edge-cases
-            python main.py math -n $NUM_CASES -o $OUTPUT_DIR/math_cases.$FORMAT -f $FORMAT --no-edge-cases
-            ;;
-        esac
+        echo "Генерация: $TASK, $COUNT случаев, формат $FMT"
         
-        # Создаём README с метаинформацией
-        cat > $OUTPUT_DIR/README.md << EOF
-        # 📊 Автоматически сгенерированные тестовые случаи
+        # Генерация
+        if [ "$TASK" = "all" ] || [ "$TASK" = "sorting" ]; then
+          python main.py sorting -n $COUNT -o "$OUTPUT_DIR/sorting.$FMT" -f $FMT
+        fi
         
-        **Дата генерации:** $TIMESTAMP
-        **Тип задач:** $TASK_TYPE
-        **Количество случаев:** $NUM_CASES на тип
-        **Формат:** $FORMAT
-        **Сгенерировано workflow:** [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+        if [ "$TASK" = "all" ] || [ "$TASK" = "searching" ]; then
+          python main.py searching -n $COUNT -o "$OUTPUT_DIR/searching.$FMT" -f $FMT
+        fi
         
-        ## 📁 Содержимое
+        if [ "$TASK" = "all" ] || [ "$TASK" = "math" ]; then
+          python main.py math -n $COUNT -o "$OUTPUT_DIR/math.$FMT" -f $FMT
+        fi
         
-        $(ls -la $OUTPUT_DIR/*.$FORMAT 2>/dev/null | wc -l) файлов с тестовыми случаями:
+        # Сохраняем outputs
+        echo "TASK=$TASK" >> $GITHUB_OUTPUT
+        echo "COUNT=$COUNT" >> $GITHUB_OUTPUT
+        echo "FMT=$FMT" >> $GITHUB_OUTPUT
+        echo "DIR=$OUTPUT_DIR" >> $GITHUB_OUTPUT
+        echo "DATE=$TIMESTAMP" >> $GITHUB_OUTPUT
         
-        $(for file in $OUTPUT_DIR/*.$FORMAT; do
-          if [ -f "$file" ]; then
-            BASENAME=$(basename "$file")
-            COUNT=$(python -c "
-import json
-import yaml
-import sys
-try:
-    with open('$file', 'r') as f:
-        if '$FORMAT' == 'json':
-            data = json.load(f)
-        else:
-            data = yaml.safe_load(f)
-    print(len(data))
-except:
-    print('?')
-")
-            echo "- \`$BASENAME\` - $COUNT тестовых случаев"
-          fi
-        done)
-        
-        ## 🔄 Как использовать
-        
-        \`\`\`python
-        # Пример загрузки JSON файла
-        import json
-        
-        with open('$OUTPUT_DIR/sorting_cases.$FORMAT', 'r') as f:
-            test_cases = json.load(f)
-        
-        for case in test_cases:
-            print(f\"Input: {case['input']}\")
-            print(f\"Expected: {case['expected']}\")
-        \`\`\`
-        
-        ---
-        *Сгенерировано автоматически с помощью [Test Case Generator](${{ github.server_url }}/${{ github.repository }})*
-        EOF
-        
-        # Сохраняем информацию для следующих шагов
-        echo "OUTPUT_DIR=$OUTPUT_DIR" >> $GITHUB_OUTPUT
-        echo "TASK_TYPE=$TASK_TYPE" >> $GITHUB_OUTPUT
-        echo "NUM_CASES=$NUM_CASES" >> $GITHUB_OUTPUT
-        echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_OUTPUT
-        
-        echo "✅ Сгенерировано $(ls $OUTPUT_DIR/*.$FORMAT 2>/dev/null | wc -l) файлов в $OUTPUT_DIR/"
+        echo "✅ Сгенерировано в $OUTPUT_DIR/"
     
-    # 5. Создание Pull Request с результатами (только для scheduled)
-    - name: 🔀 Create Pull Request with new cases
+    - name: 📤 Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: "test-cases-${{ steps.gen.outputs.DATE }}"
+        path: "${{ steps.gen.outputs.DIR }}/"
+        retention-days: 30
+    
+    - name: 🔀 Create PR (scheduled only)
       if: github.event_name == 'schedule'
       uses: peter-evans/create-pull-request@v5
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: "🧪 test: add weekly generated test cases (${{ steps.generate.outputs.TIMESTAMP }})"
-        title: "🗓️ Weekly Test Case Update - ${{ steps.generate.outputs.TIMESTAMP }}"
+        commit-message: "chore: add weekly test cases ${{ steps.gen.outputs.DATE }}"
+        title: "Weekly test cases ${{ steps.gen.outputs.DATE }}"
         body: |
-          ## 📊 Автоматическое обновление тестовых случаев
+          Автоматически сгенерированные тестовые случаи за неделю.
           
-          Этот PR содержит автоматически сгенерированные тестовые случаи на неделю.
+          **Дата:** ${{ steps.gen.outputs.DATE }}
+          **Типы задач:** ${{ steps.gen.outputs.TASK }}
+          **Количество:** ${{ steps.gen.outputs.COUNT }} каждого типа
           
-          **Детали:**
-          - **Дата генерации:** ${{ steps.generate.outputs.TIMESTAMP }}
-          - **Типы задач:** ${{ steps.generate.outputs.TASK_TYPE }}
-          - **Количество случаев:** ${{ steps.generate.outputs.NUM_CASES }} каждого типа
-          - **Сгенерировано workflow:** [${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-          
-          ### 📁 Что нового:
-          - Добавлены свежие тестовые случаи в папку `${{ steps.generate.outputs.OUTPUT_DIR }}/`
-          - Все случаи проверены на корректность
-          - Edge cases включены в соответствии с настройками
-          
-          ### 🚀 Как использовать:
-          1. Файлы доступны в папке `${{ steps.generate.outputs.OUTPUT_DIR }}/`
-          2. Форматы: JSON и YAML
-          3. Каждый файл содержит метаданные для удобства использования
-          
-          ---
-          *Сгенерировано автоматически с помощью [Test Case Generator](${{ github.server_url }}/${{ github.repository }})*
-        branch: "weekly-cases-${{ steps.generate.outputs.TIMESTAMP }}"
+          Файлы находятся в папке `${{ steps.gen.outputs.DIR }}/`
+        branch: "weekly/${{ steps.gen.outputs.DATE }}"
         base: "main"
-        labels: "automated, test-cases, weekly-update"
-        
-    # 6. Загрузка артефактов (всегда)
-    - name: 📤 Upload generated cases as artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: "test-cases-${{ steps.generate.outputs.TIMESTAMP }}"
-        path: |
-          ${{ steps.generate.outputs.OUTPUT_DIR }}/
-        retention-days: 30
-        if-no-files-found: error
-    
-    # 7. Уведомление (опционально, можно подключить позже)
-    - name: 📢 Notification summary
-      if: always()
-      run: |
-        echo "## 🧪 Генерация завершена" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Статус:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Тип запуска:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Сгенерировано:** ${{ steps.generate.outputs.TASK_TYPE }}" >> $GITHUB_STEP_SUMMARY
-        echo "**Артефакт:** test-cases-${{ steps.generate.outputs.TIMESTAMP }}" >> $GITHUB_STEP_SUMMARY
-        
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Все тестовые случаи успешно сгенерированы" >> $GITHUB_STEP_SUMMARY
-        else
-          echo "❌ Возникли ошибки при генерации" >> $GITHUB_STEP_SUMMARY
-        fi
