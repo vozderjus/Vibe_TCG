@@ -3,7 +3,7 @@
 """
 
 from typing import List, Tuple, Optional
-from ..generators.base_generator import TestCase
+from src.generators.base_generator import TestCase
 
 
 class Validator:

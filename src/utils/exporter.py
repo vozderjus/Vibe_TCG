@@ -7,7 +7,7 @@ import yaml
 from pathlib import Path
 from typing import List, Any
 
-from ..generators.base_generator import TestCase
+from src.generators.base_generator import TestCase
 
 
 class Exporter:

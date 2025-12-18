@@ -7,10 +7,13 @@ import argparse
 import sys
 from typing import Dict, Type
 
-from generators.sorting_generator import SortingGenerator
-from generators.searching_generator import SearchingGenerator
-from generators.math_generator import MathGenerator
-from utils.exporter import Exporter
+__version__ = "0.1.0"
+from src.generators.sorting_generator import SortingGenerator
+from src.generators.searching_generator import SearchingGenerator
+from src.generators.math_generator import MathGenerator
+from src.utils.exporter import Exporter
+
+# ... остальной код без изменений
 
 
 class TestCaseGeneratorCLI:
